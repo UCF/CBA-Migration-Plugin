@@ -29,7 +29,9 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 			$people = array(),
 			$people_ids = array(),
 			$committees = array(),
-			$meetings = array();
+			$meetings = array(),
+			$attachments = array(),
+			$attachment_urls = array();
 
 		public function import( $args ) {
 			try {
@@ -56,13 +58,16 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 					case 'meeting':
 						$this->meetings[] = $post;
 						break;
+					case 'attachment':
+						$this->attachments[(int)$post['post_id']] = $post;
+						break;
 					default:
 						continue;
 				}
 			}
 
-			$this->import_people( $people );
-			$this->import_committees();
+			$this->import_people();
+			//$this->import_committees();
 			//$this->import_meetings();
 		}
 
@@ -88,6 +93,8 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 					$job_title = $metas['person_job_title'];
 					$phone = $metas['person_phone'];
 					$email = $metas['person_email'];
+					$thumbnail_id = (int)$metas['_thumbnail_id'];
+					$thumbnail = $this->attachments[$thumbnail_id];
 
 					// Create an array taht can hold 
 					$categories = array();
@@ -116,6 +123,8 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 							'email'            => $email
 						)
 					) );
+
+					$this->add_attachment( $thumbnail, $post_id );
 				}
 
 				$this->people_ids[$person['post_id']] = $post_id;
@@ -155,6 +164,24 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 
 		private function import_meetings() {
 
+		}
+
+		private function add_attachment( $attachment, $post_id ) {
+			$url = $attachment['attachment_url'];
+			$tmp = download_url( $url );
+
+			if ( is_wp_error( $tmp ) ) {
+				return;
+			}
+
+			preg_match('/[^\?]+\.(jpg|jpe|jpeg|gif|png)/i', $url, $matches);
+			$file_array['name'] = basename( $matches[0] );
+			$file_array['tmp_name'] = $tmp;
+
+			preg_match( '%^[0-9]{4}/[0-9]{2}%', $url, $matches );
+			$file_array['upload_date'] = $matches[0];
+
+			$id = media_handle_sideload( $file_array, $post_id, $attachment['post_title'] );
 		}
 	}
 }
