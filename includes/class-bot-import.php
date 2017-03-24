@@ -32,7 +32,6 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 			$meetings = array();
 
 		public function import( $args ) {
-			$this->media_json_path = 'https://' . trailingslashit( $args[1] ) . 'wp-json/wp/v2/media/';
 			try {
 				$this->invoke_import( $args[0] );
 			} catch ( Exception $e ) {
