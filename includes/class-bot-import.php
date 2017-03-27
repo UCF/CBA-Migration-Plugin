@@ -243,8 +243,17 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 					$minutes = $this->attachments[(int)$metas['meeting_minutes']];
 					$location = $metas['meeting_location'];
 					$date = new DateTime( $metas['meeting_date'] );
-					$start_time = new DateTime( $metas['meeting_start_time'] );
-					$end_time = new DateTime( $metas['meeting_end_time'] );
+					try {
+						$start_time = new DateTime( $metas['meeting_start_time'] );
+					} catch( Exception $e ) {
+						$start_time = null;
+					}
+
+					try {
+						$end_time = new DateTime( $metas['meeting_end_time'] );
+					} catch( Exception $e ) {
+						$end_time = null;
+					}
 
 					$post_id = wp_insert_post( array(
 						'post_title'             => $name,
@@ -253,8 +262,8 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 						'post_status'            => 'publish',
 						'meta_input'             => array(
 							'ucf_meeting_date'       => $date->format( 'Y-m-d' ),
-							'ucf_meeting_start_time' => $start_time->format( 'H:i' ),
-							'ucf_meeting_end_time'   => $end_time->format( 'H:i' ),
+							'ucf_meeting_start_time' => $start_time ? $start_time->format( 'H:i' ) : null,
+							'ucf_meeting_end_time'   => $end_time ? $end_time->format( 'H:i' ) : null,
 							'ucf_meeting_location'   => $location
 						)
 					) );
