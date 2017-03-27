@@ -31,7 +31,8 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 			$committees = array(),
 			$meetings = array(),
 			$attachments = array(),
-			$attachment_urls = array();
+			$attachment_urls = array(),
+			$documents = array();
 
 		public function import( $args ) {
 			try {
@@ -61,13 +62,22 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 					case 'attachment':
 						$this->attachments[(int)$post['post_id']] = $post;
 						break;
+					case 'document':
+						$metas = array();
+						foreach( $post['postmeta'] as $meta ) {
+							$metas[$meta['key']] = $meta['value'];
+						}
+						if ( $metas['document_file'] ) {
+							$this->documents[(int)$post['post_id']] = (int)$metas['document_file'];
+						}
+						break;
 					default:
 						continue;
 				}
 			}
-
-			$this->import_people();
-			//$this->import_committees();
+			
+			//$this->import_people();
+			$this->import_committees();
 			//$this->import_meetings();
 		}
 
@@ -124,7 +134,9 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 						)
 					) );
 
-					$this->add_attachment( $thumbnail, $post_id );
+					if ( $thumbnail ) {
+						$this->add_attachment( $thumbnail, $post_id, '_thumbnail_id' );
+					}
 				}
 
 				$this->people_ids[$person['post_id']] = $post_id;
@@ -146,17 +158,25 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 						'description' => $metas['committee_description']
 					) );
 
-					$members = maybe_unserialize( $metas['committee_members'] );
-					$staff = maybe_unserialize( $metas['committee_staff'] );
+					// $members = maybe_unserialize( $metas['committee_members'] );
+					// $staff = maybe_unserialize( $metas['committee_staff'] );
 
-					foreach( $members as $id=>$title ) {
-						$post_id = $this->people_ids[$id];
-						wp_set_post_terms( $post_id, $term, 'people_group', TRUE );
-					}
+					// foreach( $members as $id=>$title ) {
+					// 	$post_id = $this->people_ids[$id];
+					// 	wp_set_post_terms( $post_id, $term, 'people_group', TRUE );
+					// }
 
-					foreach( $staff as $id=>$title ) {
-						$post_id = $this->people_ids[$id];
-						wp_set_post_terms( $post_id, $term, 'people_group', TRUE );
+					// foreach( $staff as $id=>$title ) {
+					// 	$post_id = $this->people_ids[$id];
+					// 	wp_set_post_terms( $post_id, $term, 'people_group', TRUE );
+					// }
+
+					$document_id = (int)$metas['committee_charter'];
+					$attachment_id = $this->documents[$document_id];
+					$attachment = $this->attachments[$attachment_id];
+
+					if ( $attachment ) {
+						$this->add_attachment( $attachment, (int)$term['term_id'], 'people_group_charter', FALSE );
 					}
 				}
 			}
@@ -166,8 +186,12 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 
 		}
 
-		private function add_attachment( $attachment, $post_id ) {
+		private function add_attachment( $attachment, $id, $meta_key, $post=TRUE ) {
 			$url = $attachment['attachment_url'];
+
+			if ( $url === null ) {
+				return;
+			}
 			$tmp = download_url( $url );
 
 			if ( is_wp_error( $tmp ) ) {
@@ -181,7 +205,14 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 			preg_match( '%^[0-9]{4}/[0-9]{2}%', $url, $matches );
 			$file_array['upload_date'] = $matches[0];
 
-			$id = media_handle_sideload( $file_array, $post_id, $attachment['post_title'] );
+			$attachment_id = media_handle_sideload( $file_array, $post_id, $attachment['post_title'] );
+
+			if ( $id && $post ) {
+				update_post_meta( $id, $meta_key, $attachment_id );
+			} else if ( $id && ! is_wp_error( $attachment_id ) ) {
+				// Use ACF's update_field
+				update_field( $meta_key, $attachment_id, $id );
+			}
 		}
 	}
 }
