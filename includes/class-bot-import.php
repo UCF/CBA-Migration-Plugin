@@ -80,7 +80,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 			
 			$this->import_people();
 			$this->import_committees();
-			//$this->import_meetings();
+			$this->import_meetings();
 
 			WP_CLI::success( 'Finished importing! Have a nice day.' );
 		}
@@ -303,7 +303,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 			} else {
 				$file_array['name'] = $attachment['post_title'];
 			}
-			
+
 			$file_array['tmp_name'] = $tmp;
 
 			$filetype = wp_check_filetype( basename( $url ), null );
