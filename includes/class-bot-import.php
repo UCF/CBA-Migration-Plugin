@@ -43,6 +43,15 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 			}
 		}
 
+		public function reset( $args, $assoc_args=array() ) {
+			try {
+				WP_CLI::confirm( 'Art thou sure thou wants to delete all people, committees, meetings and associated media?', $assoc_args );
+				$this->invoke_reset();
+			} catch( Exception $e ) {
+				WP_CLI::error( $e->message );
+			}
+		}
+
 		private function invoke_import( $file ) {
 			$parser = new WXR_Parser();
 			$xml = $parser->parse( $file );
@@ -166,6 +175,14 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 				$name = $committee['post_title'];
 				$term = term_exists( $name, 'people_group' );
 				$import = false;
+
+				// Get the post meta
+				$metas = array();
+
+				foreach( $committee['postmeta'] as $meta ) {
+					$metas[$meta['key']] = $meta['value'];
+				}
+
 				if ( ! $term ) {
 					$term = wp_insert_term( $name, 'people_group', array(
 						'description' => $metas['committee_description']
@@ -174,13 +191,6 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 					$import = true;
 
 					$import_count++;
-				}
-
-				// Get the post meta
-				$metas = array();
-
-				foreach( $committee['postmeta'] as $meta ) {
-					$metas[$meta['key']] = $meta['value'];
 				}
 
 				$members = maybe_unserialize( $metas['committee_members'] );
@@ -206,7 +216,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 					}
 				}
 
-				$this->committee_ids[$committee['post_id']] = $term->term_id;
+				$this->committee_ids[$committee['post_id']] = $term['term_id'];
 				$progress->tick();
 			}
 
@@ -238,7 +248,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 						$metas[$meta['key']] = $meta['value'];
 					}
 
-					$committee = $this->committee_ids[(int)$metas['meeting_committee']]['post_title'];
+					$committee = $this->committee_ids[(int)$metas['meeting_committee']];
 					$agenda = $this->attachments[(int)$metas['meeting_agenda']];
 					$minutes = $this->attachments[(int)$metas['meeting_minutes']];
 					$location = $metas['meeting_location'];
@@ -264,20 +274,10 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 							'ucf_meeting_date'       => $date->format( 'Y-m-d' ),
 							'ucf_meeting_start_time' => $start_time ? $start_time->format( 'H:i' ) : null,
 							'ucf_meeting_end_time'   => $end_time ? $end_time->format( 'H:i' ) : null,
-							'ucf_meeting_location'   => $location
+							'ucf_meeting_location'   => $location,
+							'ucf_meeting_committee'  => $committee ? $committee : $none_term
 						)
 					) );
-
-					if ( $committee ) {
-						$term = term_exists( $committee, 'people_group' );
-						if ( $term ) {
-							wp_set_post_terms( $post_id, $term, 'people_group', TRUE );
-						}
-					} else {
-						if ( $none_term ) {
-							wp_set_post_terms( $post_id, $none_term, 'people_group', TRUE );
-						}
-					}
 
 					if ( $agenda ) {
 						$this->add_attachment( $agenda, $post_id, 'ucf_meeting_agenda' );
@@ -336,6 +336,59 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 				$id = 'people_group_' . $id;
 				update_field( $meta_key, $attachment_id, $id );
 			}
+		}
+
+		private function invoke_reset() {
+			$people = get_posts( array( 'post_type' => 'person', 'numberposts' => -1, 'post_status' => 'any' ) );
+			$committees = get_terms( array( 'taxonomy' => 'people_group', 'hide_empty' => FALSE ) );
+			$meetings = get_posts( array( 'post_type' => 'meeting', 'numberposts' => -1, 'post_status' => 'any' ) );
+
+			$people_progress = \WP_CLI\Utils\make_progress_bar( 'Deleting people...', count( $people ) );
+			$committee_progress = \WP_CLI\Utils\make_progress_bar( 'Deleting committees...', count( $committees ) );
+			$meeting_progress = \WP_CLI\Utils\make_progress_bar( 'Deleting meetings...', count( $meetings ) );
+
+			foreach( $people as $person ) {
+				$thumbnail_id = get_post_meta( $person->ID, '_thumbnail_id', TRUE );
+				if ( $thumbnail_id ) {
+					wp_delete_attachment( $thumbnail_id, TRUE );
+				}
+				wp_delete_post( $person->ID, TRUE );
+				$people_progress->tick();
+			}
+			$people_progress->finish();
+
+			foreach( $committees as $committee ) {
+				$charter_id = get_field( 'people_group_charter', 'people_group_' . $committee->term_id  );
+				
+				if ( $charter_id ) {
+					wp_delete_attachment( $charter_id, TRUE );
+				}
+
+				wp_delete_term( $committee->term_id, 'people_group', TRUE );
+				$committee_progress->tick();
+			}
+
+			$committee_progress->finish();
+
+			foreach( $meetings as $meeting ) {
+				$agenda_id = get_post_meta( $meeting->ID, 'ucf_meeting_agenda', TRUE );
+				$minute_id = get_post_meta( $meeting->ID, 'ucf_meeting_minutes', TRUE );
+
+				if ( $agenda_id ) {
+					wp_delete_attachment( $agenda_id, TRUE );
+				}
+
+				if ( $minute_id ) {
+					wp_delete_attachment( $minute_id, TRUE );
+				}
+
+				wp_delete_post( $meeting->ID, TRUE );
+				$meeting_progress->tick();
+			}
+
+			$meeting_progress->finish();
+
+			WP_CLI::success( 'All finished!' );
 		}
 	}
 }
