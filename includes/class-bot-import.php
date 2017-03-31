@@ -289,7 +289,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 						'post_status'            => 'publish',
 						'post_date'              => $postdate,
 						'meta_input'             => array(
-							'ucf_meeting_date'       => $date->format( 'Y-m-d' ),
+							'ucf_meeting_date'       => $date->format( 'Y-m-d H:i:s' ),
 							'ucf_meeting_start_time' => $start_time ? $start_time->format( 'H:i' ) : null,
 							'ucf_meeting_end_time'   => $end_time ? $end_time->format( 'H:i' ) : null,
 							'ucf_meeting_location'   => $location,
