@@ -101,6 +101,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 
 			foreach( $this->people as $person ) {
 				$name = $person['post_title'];
+				$postdate = $person['post_date'];
 				$post_id = post_exists( $name );
 				if ( ! $post_id && $person['status'] === 'publish' ) {
 					// Get the post meta
@@ -144,6 +145,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 						'post_type'     => 'person',
 						'post_status'   => 'publish',
 						'post_category' => $categories,
+						'post_date'     => $postdate,
 						'meta_input'    => array(
 							'person_job_title' => $job_title,
 							'person_phone'     => $phone,
@@ -199,6 +201,20 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 				foreach( $members as $id=>$title ) {
 					$post_id = $this->people_ids[$id];
 					wp_set_post_terms( $post_id, $term['term_id'], 'people_group', TRUE );
+
+					$post = get_post( $post_id );
+
+					switch( $title ) {
+						case 'Chair':
+							update_field( 'people_group_chair', $post, 'people_group_' . $term['term_id'] );
+							break;
+						case 'Vice Chair':
+							update_field( 'people_group_vice_chair', $post, 'people_group_' . $term['term_id'] );
+							break;
+						case 'Ex Officio':
+							update_field( 'people_group_ex_officio', $post, 'people_group_' . $term['term_id'] );
+							break;
+					}
 				}
 
 				foreach( $staff as $id=>$title ) {
@@ -242,6 +258,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 				$post_id = post_exists( $name );
 				if ( ! $post_id && $meeting['status'] === 'publish' ) {
 					$content = $meeting['post_content'];
+					$postdate = $meeting['post_date'];
 					$metas = array();
 
 					foreach( $meeting['postmeta'] as $meta ) {
@@ -270,6 +287,7 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 						'post_content'           => $content,
 						'post_type'              => 'meeting',
 						'post_status'            => 'publish',
+						'post_date'              => $postdate,
 						'meta_input'             => array(
 							'ucf_meeting_date'       => $date->format( 'Y-m-d' ),
 							'ucf_meeting_start_time' => $start_time ? $start_time->format( 'H:i' ) : null,
@@ -307,22 +325,14 @@ if ( ! class_exists( 'BOT_Import_Command' ) ) {
 				return;
 			}
 
-			if ( preg_match('/[^\?]+\.(jpg|jpe|jpeg|gif|png)/i', $url, $matches) ) {
-				$file_array['name'] = $matches[0];
-			} else {
-				$file_array['name'] = $attachment['post_title'];
-			}
+			$file_array['name'] = basename( $url );
 
 			$file_array['tmp_name'] = $tmp;
 
 			$filetype = wp_check_filetype( basename( $url ), null );
 			$file_array = array_merge( $file_array, $filetype );
 
-			if ( preg_match( '%[0-9]{4}/[0-9]{2}%', $url, $matches ) ) {
-				$file_array['upload_date'] = $matches[0];
-			}
-
-			$attachment_id = media_handle_sideload( $file_array, $post_id );
+			$attachment_id = media_handle_sideload( $file_array, $id );
 
 			if ( is_wp_error( $attachment_id ) ) {
                 @unlink( $file_array['tmp_name'] );
