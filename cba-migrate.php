@@ -12,7 +12,7 @@ if ( ! defined( 'WPINC' ) ) {
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	require_once 'includes/class-cba-migrate.php';
 
-	WP_CLI::add_command( 'cba-migrate', 'CBA_Migrate_Command' );
+	WP_CLI::add_command( 'cba migrate', 'CBA_Migrate_Command', $args = array() );
 }
 
 ?>
