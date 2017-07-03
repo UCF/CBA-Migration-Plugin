@@ -103,6 +103,14 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 					}
 				}
 
+				// CV documents
+				if ( $cv_id = $person->person_cv ) {
+					// Force string to int conversion here so that ACF stores
+					// the value properly and can return it using the correct
+					// formatting when get_field() is called.
+					update_field( 'person_cv', intval( $cv_id ), $person->ID );
+				}
+
 				$migrate_count++;
 
 				$progress->tick();
