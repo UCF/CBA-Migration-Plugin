@@ -103,14 +103,6 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 					}
 				}
 
-				// CV documents
-				if ( $cv_id = $person->person_cv ) {
-					$cv_url = wp_get_attachment_url( intval( $cv_id ) );
-					if ( $cv_url ) {
-						update_field( 'person_cv', $cv_url, $person->ID );
-					}
-				}
-
 				$migrate_count++;
 
 				$progress->tick();
