@@ -34,6 +34,7 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 
 			try {
 				WP_CLI::confirm( 'Are you sure you want to permanently migrate this site\'s data for use with the College-Theme\'s supported post types and meta fields? This action cannot be undone.' );
+				// add_action( 'init', array( 'CBA_Migrate_Command', 'invoke_migration' ), 10 );
 				$this->invoke_migration();
 			} catch ( Exception $e ) {
 				WP_CLI::error( $e->message );
@@ -41,6 +42,12 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 		}
 
 		private function invoke_migration() {
+			// Temporarily re-activate old taxonomies so that get_terms() can
+			// return successfully.
+			register_taxonomy( 'degree_types', 'degree' );
+			register_taxonomy( 'org_groups', 'person' );
+
+			// Fetch initial post/term data
 			$this->people = get_posts( array(
 				'post_type' => 'person',
 				'post_status' => 'any',
@@ -63,9 +70,13 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			) );
 
 			$this->migrate_people();
-			// $this->migrate_degree_types();
-			// $this->migrate_departments();
+			$this->migrate_degree_types();
+			$this->migrate_departments();
 			// $this->migrate_org_groups();
+
+			// Re-deactivate old taxonomies
+			unregister_taxonomy( 'degree_types' );
+			unregister_taxonomy( 'org_groups' );
 
 			WP_CLI::success( 'Finished importing! Have a nice day.' );
 		}
@@ -168,9 +179,10 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			foreach( $this->departments as $department_id ) {
 				// Re-map the 'Department Links to Page' faux-meta field to
 				// the 'Department Website' term meta field
-				$links_to_optionname = 'tax_departments_' . $department_id . '["department_links_to_page"]';
-				if ( $dept_links_to_page = get_option( $links_to_optionname ) ) {
-					update_term_meta( $department_id, 'departments_website', get_permalink( $dept_links_to_page ) );
+				if ( $linked_page_id = $this->get_term_custom_meta( $department_id, 'departments', 'department_links_to_page' ) ) {
+					if ( $permalink = get_permalink( $linked_page_id ) ) {
+						update_term_meta( $department_id, 'departments_website', $permalink );
+					}
 				}
 
 				$migrate_count++;
@@ -210,9 +222,9 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 							wp_set_object_terms( $person->ID, $person_group['term_id'], 'people_groups' );
 						}
 					}
-				}
-				else {
-					// TODO raise exception--something went wrong
+					else {
+						// TODO raise exception--something went wrong
+					}
 				}
 
 				$migrate_count++;
@@ -222,6 +234,28 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 
 			$progress->finish();
 			WP_CLI::success( 'Successfully migrated ' . $migrate_count . ' organization groups.' );
+		}
+
+		/**
+		 * Return's a term's custom meta value by key name.
+		 * Assumes that term data are saved as options using the naming schema
+		 * 'tax_TAXONOMY-SLUG_TERMID'.
+		 *
+		 * Copied from CBA-Theme
+		 **/
+		private function get_term_custom_meta( $term_id, $taxonomy, $key ) {
+			if ( empty( $term_id ) || empty( $taxonomy ) || empty( $key ) ) {
+				return false;
+			}
+
+			$term_meta = get_option( 'tax_' + $taxonomy + '_' + $term_id );
+			if ( $term_meta && isset( $term_meta[$key] ) ) {
+				$val = $term_meta[$key];
+			}
+			else {
+				$val = false;
+			}
+			return $val;
 		}
 	}
 }
