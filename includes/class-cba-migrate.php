@@ -29,12 +29,10 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 		public function __invoke( $args ) {
 			if ( !class_exists( 'acf' ) ) {
 				WP_CLI::error( 'The Colleges-Theme requires the Advanced Custom Fields plugin for storing post metadata. Please install ACF and try again.' );
-				return; // TODO does this need to return here?
 			}
 
 			try {
 				WP_CLI::confirm( 'Are you sure you want to permanently migrate this site\'s data for use with the College-Theme\'s supported post types and meta fields? This action cannot be undone.' );
-				// add_action( 'init', array( 'CBA_Migrate_Command', 'invoke_migration' ), 10 );
 				$this->invoke_migration();
 			} catch ( Exception $e ) {
 				WP_CLI::error( $e->message );
@@ -69,10 +67,11 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 				'fields' => 'id=>name'
 			) );
 
+			// Migrate the data
 			$this->migrate_people();
 			$this->migrate_degree_types();
 			$this->migrate_departments();
-			// $this->migrate_org_groups();
+			$this->migrate_org_groups();
 
 			// Re-deactivate old taxonomies
 			unregister_taxonomy( 'degree_types' );
@@ -140,29 +139,31 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 				// Perform a direct 1-to-1 migration to the 'program_types' taxonomy
 				$program_type = wp_insert_term( $degree_type, 'program_types' );
 
-				// Re-assign tagged Degree posts
-				$grouped_degrees = get_posts( array(
-					'post_type' => 'degree',
-					'post_status' => 'any',
-					'numberposts' => -1,
-					'tax_query' => array(
-						array(
-							'taxonomy' => 'degree_types',
-							'field' => 'id',
-							'terms' => $degree_type_id
+				if ( !is_wp_error( $program_type ) ) {
+					// Re-assign tagged Degree posts
+					$grouped_degrees = get_posts( array(
+						'post_type' => 'degree',
+						'post_status' => 'any',
+						'numberposts' => -1,
+						'tax_query' => array(
+							array(
+								'taxonomy' => 'degree_types',
+								'field' => 'id',
+								'terms' => $degree_type_id
+							)
 						)
-					)
-				) );
-				if ( $grouped_degrees && is_array( $grouped_degrees ) ) {
-					foreach ( $grouped_degrees as $degree ) {
-						wp_set_object_terms( $degree->ID, $program_type['term_id'], 'program_types' );
+					) );
+					if ( $grouped_degrees && is_array( $grouped_degrees ) ) {
+						foreach ( $grouped_degrees as $degree ) {
+							wp_set_object_terms( $degree->ID, $program_type['term_id'], 'program_types' );
+						}
 					}
+
+					$migrate_count++;
 				}
 				else {
-					// TODO raise exception--something went wrong
+					WP_CLI::warning( 'Failed to create new program type ' . $degree_type . ': ' . $program_type->get_error_message() );
 				}
-
-				$migrate_count++;
 
 				$progress->tick();
 			}
@@ -200,34 +201,36 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			$progress = \WP_CLI\Utils\make_progress_bar( 'Migrating organization groups...', $count );
 
 			foreach( $this->org_groups as $org_group_id => $org_group ) {
-				// Perform a direct 1-to-1 migration to the 'people_groups' taxonomy
-				$person_group = wp_insert_term( $org_group, 'people_groups' );
+				// Perform a direct 1-to-1 migration to the 'people_group' taxonomy
+				$person_group = wp_insert_term( $org_group, 'people_group' );
 
-				// Re-assign tagged Person posts
-				if ( is_array( $person_group ) ) {
-					$grouped_people = get_posts( array(
-						'post_type' => 'person',
-						'post_status' => 'any',
-						'numberposts' => -1,
-						'tax_query' => array(
-							array(
-								'taxonomy' => 'org_groups',
-								'field' => 'id',
-								'terms' => $org_group_id
+				if ( !is_wp_error( $person_group ) ) {
+					// Re-assign tagged Person posts
+					if ( is_array( $person_group ) ) {
+						$grouped_people = get_posts( array(
+							'post_type' => 'person',
+							'post_status' => 'any',
+							'numberposts' => -1,
+							'tax_query' => array(
+								array(
+									'taxonomy' => 'org_groups',
+									'field' => 'id',
+									'terms' => $org_group_id
+								)
 							)
-						)
-					) );
-					if ( $grouped_people && is_array( $grouped_people ) ) {
-						foreach ( $grouped_people as $person ) {
-							wp_set_object_terms( $person->ID, $person_group['term_id'], 'people_groups' );
+						) );
+						if ( $grouped_people && is_array( $grouped_people ) ) {
+							foreach ( $grouped_people as $person ) {
+								wp_set_object_terms( $person->ID, $person_group['term_id'], 'people_group' );
+							}
 						}
 					}
-					else {
-						// TODO raise exception--something went wrong
-					}
-				}
 
-				$migrate_count++;
+					$migrate_count++;
+				}
+				else {
+					WP_CLI::warning( 'Failed to create new person group ' . $org_group . ': ' . $person_group->get_error_message() );
+				}
 
 				$progress->tick();
 			}
