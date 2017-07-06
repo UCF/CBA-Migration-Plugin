@@ -5,10 +5,15 @@ WordPress plugin that provides a WP CLI script which migrates incompatible data 
 
 ## Requirements
 - WP CLI
+- Advanced Custom Fields Pro
+- UCF Degree Custom Post Type
+- UCF Departments Taxonomy
+- UCF Employee Types Taxonomy
+- UCF People Custom Post Type
 
 The migration plugin should be run against a WordPress site that previously had the CBA-Theme as its active theme and has existing post data.  This migration script is not for use against a brand new WordPress site.
 
-The Colleges-Theme should be the active theme, and all dependent plugins for the Business site (e.g. Person CPT, Degree CPT plugins) should be installed and activated prior to running the script.
+The Colleges-Theme should be the active theme, all dependent plugins for the Business site should be installed and activated, and ACF field groups from the Colleges-Theme repo should be imported prior to running the migration script.
 
 
 ## Installation
