@@ -8,7 +8,7 @@ WordPress plugin that provides a WP CLI script which migrates incompatible data 
 
 The migration plugin should be run against a WordPress site that previously had the CBA-Theme as its active theme and has existing post data.  This migration script is not for use against a brand new WordPress site.
 
-The Colleges-Theme should be the active theme, and all dependent plugins (e.g. Person CPT, Degree CPT plugins) should be installed and activated prior to running the script.
+The Colleges-Theme should be the active theme, and all dependent plugins for the Business site (e.g. Person CPT, Degree CPT plugins) should be installed and activated prior to running the script.
 
 
 ## Installation
@@ -23,4 +23,4 @@ The Colleges-Theme should be the active theme, and all dependent plugins (e.g. P
 
 ## Usage
 
-`$ wp cba migrate --url=http://business.ucf.edu` (Update the URL to point to the site relative to the environment being run against)
+`$ wp cba migrate --url="http://business.ucf.edu"` (Update the URL to point to the site relative to the environment being run against)
