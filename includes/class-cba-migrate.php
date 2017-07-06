@@ -104,10 +104,19 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 						delete_field( 'person_medias', $person->ID ); // delete existing ACF field data, just in case
 
 						foreach ( $medias as $media ) {
+							$media_title = $media['title'];
+							$media_link  = $media['link'];
+
+							// Fix instances of relative youtube urls, which
+							// won't work with ACF's oembed fields
+							if ( substr( $media_link, 0, 2 ) === '//' ) {
+								$media_link = str_replace( '//', 'https://', $media_link );
+							}
+
 							add_row( 'person_medias', array(
 								// NOTE: 'date' field from CBA-Theme is unused.
-								'title' => $media['title'],
-								'link'  => $media['link']
+								'title' => $media_title,
+								'link'  => $media_link
 							), $person->ID );
 						}
 					}
