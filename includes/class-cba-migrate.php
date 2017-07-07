@@ -136,7 +136,7 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			}
 
 			$progress->finish();
-			WP_CLI::success( 'Successfully migrated ' . $migrate_count . ' people.' );
+			WP_CLI::log( 'Successfully migrated ' . $migrate_count . ' people.' );
 		}
 
 		private function migrate_degree_types() {
@@ -178,7 +178,7 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			}
 
 			$progress->finish();
-			WP_CLI::success( 'Successfully migrated ' . $migrate_count . ' degree types.' );
+			WP_CLI::log( 'Successfully migrated ' . $migrate_count . ' degree types.' );
 		}
 
 		private function migrate_departments() {
@@ -201,7 +201,7 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			}
 
 			$progress->finish();
-			WP_CLI::success( 'Successfully migrated ' . $migrate_count . ' departments.' );
+			WP_CLI::log( 'Successfully migrated ' . $migrate_count . ' departments.' );
 		}
 
 		private function migrate_org_groups() {
@@ -245,7 +245,7 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			}
 
 			$progress->finish();
-			WP_CLI::success( 'Successfully migrated ' . $migrate_count . ' organization groups.' );
+			WP_CLI::log( 'Successfully migrated ' . $migrate_count . ' organization groups.' );
 		}
 
 		/**
