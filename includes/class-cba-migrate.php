@@ -24,7 +24,9 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			$people = array(),
 			$degree_types = array(),
 			$departments = array(),
-			$org_groups = array();
+			$org_groups = array(),
+			$publications = array(),
+			$site_url;
 
 		public function __invoke( $args ) {
 			if ( !class_exists( 'acf' ) ) {
@@ -40,10 +42,15 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 		}
 
 		private function invoke_migration() {
-			// Temporarily re-activate old taxonomies so that get_terms() can
-			// return successfully.
+			// Set Site URL
+			$this->site_url = get_site_url();
+
+			// Temporarily re-activate old taxonomies and post types so that
+			// get_terms() and get_posts() can return successfully.
+			register_post_type( 'publication' );
 			register_taxonomy( 'degree_types', 'degree' );
 			register_taxonomy( 'org_groups', 'person' );
+			register_taxonomy( 'publication_types', 'publication' );
 
 			// Fetch initial post/term data
 			$this->people = get_posts( array(
@@ -66,16 +73,24 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 				'hide_empty' => false,
 				'fields' => 'id=>name'
 			) );
+			$this->publications = get_posts( array(
+				'post_type' => 'publication',
+				'post_status' => 'any',
+				'numberposts' => -1
+			) );
 
 			// Migrate the data
 			$this->migrate_people();
 			$this->migrate_degree_types();
 			$this->migrate_departments();
 			$this->migrate_org_groups();
+			$this->migrate_publications();
 
-			// Re-deactivate old taxonomies
+			// Re-deactivate old taxonomies and post types
 			unregister_taxonomy( 'degree_types' );
 			unregister_taxonomy( 'org_groups' );
+			unregister_taxonomy( 'publication_types' );
+			unregister_post_type( 'publication' );
 
 			WP_CLI::success( 'Finished importing! Have a nice day.' );
 		}
@@ -246,6 +261,128 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 
 			$progress->finish();
 			WP_CLI::log( 'Successfully migrated ' . $migrate_count . ' organization groups.' );
+		}
+
+		private function migrate_publications() {
+			$count = count( $this->publications );
+			$migrate_count = 0;
+			$progress = \WP_CLI\Utils\make_progress_bar( 'Migrating publications...', $count );
+
+			// Create new 'publication' category or return existing
+			$pub_cat_id = intval( wp_create_category( 'Publication' ) );
+			// Create new 'featured' category or return existing
+			$featured_cat_id = intval( wp_create_category( 'Featured' ) );
+
+			// Copy publications into posts and categorize
+			foreach( $this->publications as $pub ) {
+				$pub_pubtypes       = wp_get_post_terms( $pub->ID, 'publication_types', array( 'fields' => 'names' ) );
+				$pub_people         = get_post_meta( $pub->ID, 'publication_people', true );
+				$page_links_to      = get_post_meta( $pub->ID, '_links_to', true );
+				$links_to_target    = get_post_meta( $pub->ID, '_links_to_target', true );
+				$redirected_post_id = null;
+				$redirected_post    = null;
+				$redirects_to_post  = false;
+				$migrated_post      = null;
+				$migrated_post_id   = null;
+				$migrated_post_cats = array( $pub_cat_id );
+
+				if ( $page_links_to ) {
+					// Handle checks against other environments with imported
+					// data from prod
+					if ( strpos( $page_links_to, 'business.ucf.edu' ) !== false && strpos( $this->site_url, 'business.ucf.edu' ) === false ) {
+						$page_links_to = preg_replace( '/http(s)?\:\/\/business\.ucf\.edu/', $this->site_url, $page_links_to );
+					}
+
+					$redirected_post_id = url_to_postid( $page_links_to );
+					$redirected_post    = $redirected_post_id ? get_post( $redirected_post_id ) : false;
+
+					if ( $redirected_post ) {
+						$redirects_to_post = $redirected_post->post_type === 'post';
+					}
+				}
+
+				// Get an existing post to modify, or create a new one
+				if ( $redirects_to_post ) {
+					WP_CLI::log( 'Publication ' . $pub->post_title . ' redirects to an existing post. Using it instead.' );
+					// If the redirect goes to an existing post, use that post
+					// (avoid creating duplicate posts)
+					$migrated_post = $redirected_post;
+				}
+				else {
+					// Check for existing migrated publications
+					if (
+						!empty( $pub->post_title )
+						&& $existing_post = get_posts( array(
+							'numberposts' => 1,
+							'post_type' => 'post',
+							'post_status' => 'any',
+							'title' => $pub->post_title,
+							'category' => $pub_cat_id
+						) )
+					) {
+						WP_CLI::log( 'Publication ' . $pub->post_title . ' has already been migrated. Updating existing post instead.' );
+						$migrated_post = $existing_post[0];
+					}
+					else {
+						// Publication can be migrated directly as-is; create a new post
+						$migrated_post = clone $pub;
+						$migrated_post->post_type = 'post';
+						unset( $migrated_post->ID );
+						unset( $migrated_post->guid );
+						$migrated_post = wp_insert_post( (array)$migrated_post, true );
+					}
+				}
+
+				// Update post metadata and categories
+				if ( !is_wp_error( $migrated_post ) ) {
+					// Normalize migrated post id ($migrated post can be a
+					// WP Post obj or post ID at this point)
+					$migrated_post_id = is_object( $migrated_post ) ? $migrated_post->ID : intval( $migrated_post ) ;
+
+					// Re-save Page Links To metadata
+					if ( $page_links_to && $redirected_post_id !== $migrated_post_id ) {
+						update_post_meta( $migrated_post_id, '_links_to', $page_links_to );
+					}
+					if ( $links_to_target && $redirected_post_id !== $migrated_post_id ) {
+						update_post_meta( $migrated_post_id, '_links_to_target', $links_to_target );
+					}
+
+					// Migrate publication-to-person relationship meta.
+					// Conveniently ACF relationship fields store data the same
+					// way it was being stored in CBA-Theme (array of IDs).
+					if ( $pub_people ) {
+						update_field( 'post_associated_people', $pub_people, $migrated_post_id );
+					}
+
+					// Apply relevant categories
+					if ( $pub_pubtypes ) {
+						foreach ( $pub_pubtypes as $pubtype ) {
+							if ( $pubtype === 'Featured' ) {
+								$migrated_post_cats[] = $featured_cat_id;
+							}
+							else {
+								if ( $mapped_cat_id = get_cat_ID( $pubtype ) ) {
+									$migrated_post_cats[] = $mapped_cat_id;
+								}
+								else {
+									WP_CLI::warning( 'Failed to convert publication_type ' . $pubtype . ' for publication ' . $pub->post_title . ': matching post category not found' );
+								}
+							}
+						}
+					}
+					wp_set_post_categories( $migrated_post_id, $migrated_post_cats );
+
+					$migrate_count++;
+				}
+				else {
+					WP_CLI::warning( 'Failed to create new post from publication ' . $pub->post_title . ': ' . $migrated_post->get_error_message() );
+				}
+
+				$progress->tick();
+			}
+
+			$progress->finish();
+			WP_CLI::log( 'Successfully migrated ' . $migrate_count . ' publications.' );
 		}
 
 		/**
