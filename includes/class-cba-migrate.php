@@ -22,6 +22,7 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 		 */
 		private
 			$people = array(),
+			$degrees = array(),
 			$degree_types = array(),
 			$departments = array(),
 			$org_groups = array(),
@@ -58,6 +59,11 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 				'post_status' => 'any',
 				'numberposts' => -1
 			) );
+			$this->degrees = get_posts( array(
+				'post_type' => 'degree',
+				'post_status' => 'any',
+				'numberposts' => -1
+			) );
 			$this->degree_types = get_terms( array(
 				'taxonomy' => 'degree_types',
 				'hide_empty' => false,
@@ -81,6 +87,7 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 
 			// Migrate the data
 			$this->migrate_people();
+			$this->migrate_degrees();
 			$this->migrate_degree_types();
 			$this->migrate_departments();
 			$this->migrate_org_groups();
@@ -152,6 +159,33 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 
 			$progress->finish();
 			WP_CLI::log( 'Successfully migrated ' . $migrate_count . ' people.' );
+		}
+
+		private function migrate_degrees() {
+			$count = count( $this->degrees );
+			$migrate_count = 0;
+			$progress = \WP_CLI\Utils\make_progress_bar( 'Migrating degrees...', $count );
+
+			foreach( $this->degrees as $degree ) {
+				// Migrate short descriptions to excerpts
+				if ( $desc = $degree->degree_desc_brief ) {
+					$updated_post = wp_update_post( array(
+						'ID' => $degree->ID,
+						'post_excerpt' => $desc
+					), true );
+
+					if ( is_wp_error( $updated_post ) ) {
+						WP_CLI::warning( 'Failed to migrate description for degree ' . $degree->post_title . ': ' . $updated_post->get_error_message() );
+					}
+				}
+
+				$migrate_count++;
+
+				$progress->tick();
+			}
+
+			$progress->finish();
+			WP_CLI::log( 'Successfully migrated ' . $migrate_count . ' degrees.' );
 		}
 
 		private function migrate_degree_types() {
