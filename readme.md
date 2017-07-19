@@ -29,3 +29,9 @@ The Colleges-Theme should be the active theme, all dependent plugins for the Bus
 ## Usage
 
 `$ wp cba migrate --url="http://business.ucf.edu"` (Update the URL to point to the site relative to the environment being run against)
+
+
+## Changelog
+
+### 1.0.0
+* Initial release
