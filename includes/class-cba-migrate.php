@@ -179,6 +179,13 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 					}
 				}
 
+				// Set 'degree_import_ignore' flag for the UCF Degree CPT
+				// plugin's degree importer on all executive programs, since
+				// they aren't true degrees but need to be left intact
+				if ( has_term( 'Executive Education', 'degree_types', $degree ) ) {
+					update_post_meta( $degree->ID, 'degree_import_ignore', 'on' );
+				}
+
 				$migrate_count++;
 
 				$progress->tick();
