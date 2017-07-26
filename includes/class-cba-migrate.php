@@ -194,7 +194,15 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			$progress = \WP_CLI\Utils\make_progress_bar( 'Migrating degree types...', $count );
 
 			foreach( $this->degree_types as $degree_type_id => $degree_type ) {
-				// Perform a direct 1-to-1 migration to the 'program_types' taxonomy
+				// Perform a direct 1-to-1 migration to the 'program_types'
+				// taxonomy, but rename 'graduate programs' and
+				// 'undergraduate programs'
+				if ( $degree_type === 'Graduate Programs' ) {
+					$degree_type = 'Graduate Program';
+				}
+				else if ( $degree_type === 'Undergraduate Programs' ) {
+					$degree_type = 'Undergraduate Program';
+				}
 				$program_type = wp_insert_term( $degree_type, 'program_types' );
 
 				if ( !is_wp_error( $program_type ) ) {
