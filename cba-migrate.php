@@ -2,7 +2,7 @@
 /*
 Plugin Name: CBA Migration Plugin
 Description: Adds a WP-CLI command to migrate incompatible metadata from CBA-Theme to fields provided by Colleges-Theme's supported plugins.
-Version: 1.0.0
+Version: 1.0.1
 Authors: UCF Web Communications
 */
 if ( ! defined( 'WPINC' ) ) {

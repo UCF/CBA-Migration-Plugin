@@ -33,5 +33,9 @@ The Colleges-Theme should be the active theme, all dependent plugins for the Bus
 
 ## Changelog
 
+### 1.0.1
+* Degree migration now sets the 'degree_import_ignore' meta field to 'on' for all executive education degrees, allowing them to remain intact after running a degree data import
+* Renamed undergraduate and graduate program terms on import to match what the new degree data importer will expect
+
 ### 1.0.0
 * Initial release
