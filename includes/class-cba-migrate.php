@@ -307,7 +307,16 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 					}
 				}
 
+				$program_type = wp_get_post_terms( $degree->ID, 'program_types' );
+				$program_type = is_array( $program_types ) ? $program_type[0] : null;
 
+				$mapping = isset( $this->degree_map[$program_type][$degree->post_title] ) ?
+						   $this->degree_map[$program_type][$degree->post_title] : null;
+
+				if ( $mapping ) {
+					update_post_meta( $degree->ID, 'degree_id', $mapping['degree_id'] );
+					update_post_meta( $degree->ID, 'degree_type_id', $mapping['degree_type_id'] );
+				}
 
 				// Set 'degree_import_ignore' flag for the UCF Degree CPT
 				// plugin's degree importer on all executive programs, since
