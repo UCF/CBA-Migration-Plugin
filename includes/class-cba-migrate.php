@@ -27,7 +27,129 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 			$departments = array(),
 			$org_groups = array(),
 			$publications = array(),
-			$site_url;
+			$site_url,
+			$degree_map = array(
+				'Accounting' => array(
+					'degree_id'      => '82',
+					'degree_type_id' => '141'
+				),
+				'Economics' => array(
+					'degree_id'      => '87',
+					'degree_type_id' => '170'
+				),
+				'Finance' => array(
+					'degree_id'      => '78',
+					'degree_type_id' => '194'
+				),
+				'Integrated Business' => array(
+					'degree_id'      => '189',
+					'degree_type_id' => '399'
+				),
+				'Management' => array(
+					'degree_id' => '86',
+					'degree_type_id' => '227'
+				),
+				'Marketing' => array(
+					'degree_id'      => '77',
+					'degree_type_id' => '229'
+				),
+				'Real Estate' => array(
+					'degree_id'      => '122',
+					'degree_type_id' => '264'
+				),
+				'Bachelor of Science in Economics' => array(
+					'degree_id'      => '87',
+					'degree_type_id' => '170'
+				),
+				'Master of Science in Economics' => array(
+					'degree_id'      => 'Economics MS',
+					'degree_type_id' => null
+				),
+				'Master of Sport Business Management (MSBM)' => array(
+					'degree_id'      => 'Sport Business Management MSBM',
+					'degree_type_id' => null
+				),
+				'MS in Accounting' => array(
+					'degree_id'      => 'Accounting MSA',
+					'degree_type_id' => null
+				),
+				'Ph.D. in Business Administration' => array(
+					'degree_id'      => 'Business Administration PhD',
+					'degree_type_id' => null
+				),
+				'Professional MS in Management – Business Analytics Track' => array(
+					'degree_id'      => null,
+					'degree_type_id' => null
+				),
+				'Professional MS in Management – Human Resources Track' => array(
+					'degree_id'      => null,
+					'degree_type_id' => null
+				),
+				'Professional MS in Real Estate' => array(
+					'degree_id'      => 'Real Estate MSRE',
+					'degree_type_id' => null
+				),
+				'Evening MBA' => array(
+					'degree_id'      => null,
+					'degree_type_id' => null
+				),
+				'Executive MBA' => array(
+					'degree_id'      => null,
+					'degree_type_id' => null
+				),
+				'Professional MBA – Full-Time' => array(
+					'degree_id'      => null,
+					'degree_type_id' => null
+				),
+				'Professional MBA – Part-Time' => array(
+					'degree_id'      => null,
+					'degree_type_id' => null
+				),
+				'International Residency Programs' => array(
+					'degree_id'      => null,
+					'degree_type_id' => null
+				),
+				'Entrepreneurship' => array(
+					'degree_id'      => '515',
+					'degree_type_id' => '101'
+				),
+				'Technology Ventures' => array(
+					'degree_id'      => 'Technology Ventures Graduate Certificate',
+					'degree_type_id' => null
+				),
+				'Accounting' => array(
+					'degree_id'      => '90',
+					'degree_type_id' => '93'
+				),
+				'Economics' => array(
+					'degree_id'      => '188',
+					'degree_type_id' => '118'
+				),
+				'Entrepreneurship' => array(
+					'degree_id'      => '157',
+					'degree_type_id' => '254'
+				),
+				'Finance' => array(
+					'degree_id'      => '119',
+					'degree_type_id' => '131'
+				),
+				'General Business' => array(
+					'degree_id'      => '199',
+					'degree_type_id' => '107'
+				),
+				'International Business' => array(
+					'degree_id'      => '202',
+					'degree_type_id' => '145'
+				),
+				'Marketing' => array(
+					'degree_id'      => '202',
+					'degree_type_id' => '145'
+				),
+				'Sport Business Minor' => array(
+					'degree_id'      => '189',
+					'degree_type_id' => '399'
+				)
+			);
 
 		public function __invoke( $args ) {
 			if ( !class_exists( 'acf' ) ) {
