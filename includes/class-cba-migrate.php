@@ -310,8 +310,8 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 					}
 				}
 
-				$program_type = wp_get_post_terms( $degree->ID, 'program_types' );
-				$program_type = is_array( $program_type ) ? $program_type[0] : null;
+				$program_type = wp_get_post_terms( $degree->ID, 'degree_types' );
+				$program_type = is_array( $program_type ) ? $program_type[0]->name : null;
 
 				$parent = wp_get_post_parent_id( $degree->ID );
 
@@ -325,6 +325,10 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 				if ( $mapping ) {
 					update_post_meta( $degree->ID, 'degree_id', $mapping['degree_id'] );
 					update_post_meta( $degree->ID, 'degree_type_id', $mapping['degree_type_id'] );
+
+					if ( $mapping['degree_id'] === null && $mapping['degree_type_id'] === null ) {
+						update_post_meta( $degree->ID, 'degree_import_ignore', 'on' );
+					}
 				}
 
 				// Set 'degree_import_ignore' flag for the UCF Degree CPT
