@@ -290,6 +290,9 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 		}
 
 		private function migrate_degrees() {
+			$minor_post = get_page_by_title( 'Business Minors', OBJECT, 'degree' );
+			$minor_id = $minor_post ? $minor_post->ID : null;
+
 			$count = count( $this->degrees );
 			$migrate_count = 0;
 			$progress = \WP_CLI\Utils\make_progress_bar( 'Migrating degrees...', $count );
@@ -309,6 +312,12 @@ if ( ! class_exists( 'CBA_Migrate_Command' ) ) {
 
 				$program_type = wp_get_post_terms( $degree->ID, 'program_types' );
 				$program_type = is_array( $program_types ) ? $program_type[0] : null;
+
+				$parent = wp_get_post_parent_id( $degree->ID );
+
+				if ( $parent === $minor_id ) {
+					$program_type = 'Minors';
+				}
 
 				$mapping = isset( $this->degree_map[$program_type][$degree->post_title] ) ?
 						   $this->degree_map[$program_type][$degree->post_title] : null;
